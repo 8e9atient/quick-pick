@@ -1,8 +1,8 @@
+import configparser
 import re
 
 from tabulate import tabulate
 
-import environ
 from selenium.webdriver.support import expected_conditions as EC
 
 from selenium import webdriver
@@ -26,9 +26,9 @@ headers = [
 ]
 li.append(headers)
 
-# .env
-env = environ.Env(DEBUG=(bool, False))
-environ.Env.read_env(env_file='./.env')
+# config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # 웹 드라이버 옵션 설정
 options = Options()
@@ -49,8 +49,8 @@ login_button = WebDriverWait(driver, 10).until(
 # 2. 로그인
 id_field = WebDriverWait(driver, 10).until(
     EC.visibility_of_element_located((By.ID, 'userId'))
-).send_keys(env('USERNAME'))
-driver.find_element(By.NAME, 'password').send_keys(env('PASSWORD'))
+    ).send_keys(config['credentials']['username'])
+driver.find_element(By.NAME, 'password').send_keys(config['credentials']['password'])
 driver.find_element(By.XPATH, '//*[@id="article"]/div[2]/div/form/div/div[1]/fieldset/div[1]/a').click()
 
 # 3. 예치금 확인
