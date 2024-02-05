@@ -1,4 +1,4 @@
-.env
+config.ini
 chromedriver.exe
 
 # Created by https://www.toptal.com/developers/gitignore/api/python
@@ -128,7 +128,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+config.ini
 .venv
 env/
 venv/
