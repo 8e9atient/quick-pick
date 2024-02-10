@@ -2,7 +2,9 @@ import asyncio
 import configparser
 import re
 
-import telegram
+from aiogram import Dispatcher, Bot
+from aiogram.filters import CommandStart
+from aiogram.types.message import Message
 from tabulate import tabulate
 
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,7 +22,8 @@ config.read('config.ini')
 
 # telegram
 BOT_TOKEN = config['telegram']['mytoken']
-CHAT_ID = config['telegram']['mychatid']
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
 
 # tabulate headers
 li = [[
@@ -34,18 +37,17 @@ li = [[
     "Draw Date"
 ]]
 
-# 웹 드라이버 옵션 설정
-options = Options()
-options.add_experimental_option("excludeSwitches", ["enable-automation"])
-options.add_experimental_option("detach", True)
 
-# 웹 드라이버 초기화 (Selenium 4 이상)
-s = Service('./chromedriver.exe')
-driver = webdriver.Chrome(service=s, options=options)
+@dp.message(CommandStart())
+async def lottery(message: Message):
+    # 웹 드라이버 옵션 설정
+    options = Options()
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("detach", True)
 
-
-async def lottery():
-    bot = telegram.Bot(token=BOT_TOKEN)
+    # 웹 드라이버 초기화 (Selenium 4 이상)
+    s = Service('./chromedriver.exe')
+    driver = webdriver.Chrome(service=s, options=options)
 
     # 1. 로그인 페이지 이동
     driver.get("https://dhlottery.co.kr/common.do?method=main")
@@ -67,7 +69,7 @@ async def lottery():
     ).text
 
     if int(''.join(re.findall('\d+', money))) < 1000:
-        asyncio.run(bot.sendMessage(chat_id=config['telegram']['mychatid'], text=f"잔액이 부족합니다."))
+        await message.answer(text=f"잔액이 부족합니다.")
     else:
         # 4. 자동번호 선택 후 구매
         driver.get('https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40')
@@ -89,8 +91,7 @@ async def lottery():
         driver.get("https://dhlottery.co.kr/myPage.do?method=lottoBuyListView")
 
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, '#frm > table > tbody > tr:nth-child(3) > td > span.period > a:nth-child(2)'))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, '#frm > table > tbody > tr:nth-child(3) > td > span.period > a:nth-child(3)'))
         ).send_keys('\n')
         driver.find_element(By.XPATH, '//*[@id="submit_btn"]').click()
 
@@ -104,15 +105,27 @@ async def lottery():
             li.append([j.text for j in result_table_tr[i].find_elements(By.TAG_NAME, 'td')])
 
         res = tabulate(li, tablefmt='grid')
+
         driver.switch_to.default_content()
 
-        money = driver.find_element(By.CSS_SELECTOR, 'body > div:nth-child(1) > header > div.header_con > div.top_menu > form > div > ul.information > li.money > a:nth-child(2) > strong').text
+        # 6. 결제하고 남은 예치금 조회 및 당첨여부 전송
+        driver.get("https://dhlottery.co.kr/common.do?method=main")
+        money = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, 'body > div:nth-child(1) > header > div.header_con > div.top_menu > form > div > ul.information > li.money > a:nth-child(2) > strong'))
+        ).text
 
-        await bot.send_message(chat_id=CHAT_ID, text=f"{res}")
-        await bot.send_message(chat_id=CHAT_ID, text=f"현재 예치금 잔액: {money}")
+        await message.answer(text=f"{res}")
+        await message.answer(text=f"현재 예치금 잔액: {money}")
 
-    # 6. 웹 드라이버 종료
+    # 7. 웹 드라이버 종료
     driver.quit()
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(lottery())
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("프로그램이 사용자에 의해 종료되었습니다.")
