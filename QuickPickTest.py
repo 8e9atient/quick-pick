@@ -29,6 +29,16 @@ class QuickPickTest(unittest.TestCase):
         driver = self.driver
         driver.get("https://dhlottery.co.kr/common.do?method=main")
 
+        # 팝업 제거
+        main_window_handle = driver.current_window_handle
+
+        for handle in driver.window_handles:
+            if handle != main_window_handle:
+                driver.switch_to.window(handle)
+                driver.close()
+
+        driver.switch_to.window(main_window_handle)
+
         # 로그인 버튼
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR,
