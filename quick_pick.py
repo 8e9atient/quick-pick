@@ -16,26 +16,17 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 
-# config.ini
+# config
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-# telegram
-BOT_TOKEN = config['telegram']['mytoken']
+# aiogram
+BOT_TOKEN = config['aiogram']['mytoken']
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 # tabulate headers
-li = [[
-    "Purchase Date",
-    "Lottery Name",
-    "Round",
-    "Selected Numbers/Lottery Numbers",
-    "Number of Purchases",
-    "Winning Result",
-    "Rank",
-    "Draw Date"
-]]
+li = [["Purchase Date", "Lottery Name", "Round", "Selected Numbers/Lottery Numbers", "Number of Purchases", "Winning Result", "Rank", "Draw Date"]]
 
 
 @dp.message(CommandStart())
@@ -100,7 +91,6 @@ async def lottery(message: Message):
 
         result_table = driver.find_element(By.CSS_SELECTOR, 'body > table')
         result_table_tr = result_table.find_elements(By.TAG_NAME, 'tr')
-
         for i in range(1, len(result_table_tr)):
             li.append([j.text for j in result_table_tr[i].find_elements(By.TAG_NAME, 'td')])
 
@@ -110,6 +100,7 @@ async def lottery(message: Message):
 
         # 6. 결제하고 남은 예치금 조회 및 당첨여부 전송
         driver.get("https://dhlottery.co.kr/common.do?method=main")
+
         money = WebDriverWait(driver, 10).until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, 'body > div:nth-child(1) > header > div.header_con > div.top_menu > form > div > ul.information > li.money > a:nth-child(2) > strong'))
         ).text
